@@ -1,0 +1,18 @@
+POST http://127.0.0.1:8080/weather HTTP/1.1
+Host: 127.0.0.1:8080
+Content-Type: application/json
+
+{
+  "cep": "00000000"
+
+}
+
+###teste cloud run 
+POST https://fulcycle-temperatura-por-cep-251238601054.us-central1.run.app/weather HTTP/1.1
+Host: fulcycle-temperatura-por-cep-251238601054.us-central1.run.app
+Content-Type: application/json
+
+{
+  "cep": "02420001"
+
+}
