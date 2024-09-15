@@ -1,13 +1,18 @@
-ENDEREÇO DE ACESSSO PARA CLOUD RUN
-<https://fulcycle-temperatura-por-cep-251238601054.us-central1.run.app>
+RUN DOCKER COMPOSE
+docker compose up --build
+após o comando terminar envie o post abaixo
+
+
+ENDEREÇO DE ACESSSO
+<http://127.0.0.1:8080/weather>
 
 Exemplo de Uso:
 
-POST <https://fulcycle-temperatura-por-cep-251238601054.us-central1.run.app/weather> HTTP/1.1
-Host: fulcycle-temperatura-por-cep-251238601054.us-central1.run.app
+POST http://127.0.0.1:8080/weather HTTP/1.1
+Host: 127.0.0.1:8080
 Content-Type: application/json
 
 {
-  "cep": "02420001"
+  "cep": "03142010"
 
 }
