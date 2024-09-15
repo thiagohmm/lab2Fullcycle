@@ -9,6 +9,7 @@ import (
 	"regexp"
 
 	"github.com/thiagohmm/fulcycleTemperaturaPorCep/internal/usecase"
+	"go.opentelemetry.io/otel"
 )
 
 type WeatherHandler struct {
@@ -17,6 +18,14 @@ type WeatherHandler struct {
 
 func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 	var req usecase.TemperatureInputDTO
+
+	// Obter o tracer global
+	tracer := otel.Tracer("weather-handler")
+
+	// Iniciar um span para a requisição HTTP
+	ctx, span := tracer.Start(r.Context(), "GetWeatherHandler")
+	defer span.End()
+
 	// Logando o corpo da requisição
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -25,12 +34,15 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("Request Body: ", string(bodyBytes))
 
-	// Agora, decodifique o corpo do request
-	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes)) // Reconstituindo o body para o decoder
+	// Reconstituir o corpo para o decoder
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes)) // Reutiliza o corpo da requisição
+
+	// Decodificar o corpo da requisição JSON
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
+
 	cep := req.Cep
 
 	// Validação do CEP: deve conter exatamente 8 dígitos numéricos
@@ -40,9 +52,13 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Chamando o caso de uso para obter o clima
+	// Iniciar um novo span para a execução do caso de uso
+	ctx, spanUseCase := tracer.Start(ctx, "ExecuteUseCase")
+	defer spanUseCase.End()
+
+	// Chamar o caso de uso para obter o clima
 	dto := usecase.TemperatureInputDTO{Cep: cep}
-	weather, err := h.UseCase.Execute(r.Context(), dto)
+	weather, err := h.UseCase.Execute(ctx, dto) // Passar o contexto traçado para o caso de uso
 	if err != nil {
 		if err.Error() == "CEP not found" {
 			http.Error(w, "can not find zipcode", http.StatusNotFound)
@@ -52,7 +68,7 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Definindo o cabeçalho da resposta e enviando o JSON com os dados do clima
+	// Definir o cabeçalho da resposta e enviar o JSON com os dados do clima
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(weather)

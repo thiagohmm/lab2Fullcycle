@@ -11,6 +11,7 @@ import (
 	"github.com/thiagohmm/fulcycleTemperaturaPorCep/internal/infraestructure"
 	"github.com/thiagohmm/fulcycleTemperaturaPorCep/internal/usecase" // Add this line to import the usecase package
 	"github.com/thiagohmm/fulcycleTemperaturaPorCep/internal/web"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/zipkin"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -71,7 +72,7 @@ func main() {
 	r.Use(middleware.Recoverer) // Recuperar de panics
 
 	// Definir rota para o endpoint
-	r.Post("/weather", handler.GetWeather)
+	r.Post("/weather", otelhttp.NewHandler(http.HandlerFunc(handler.GetWeather), "/weather").ServeHTTP)
 
 	// Iniciar o servidor HTTP
 	log.Println("Server running on :8080")
