@@ -7,7 +7,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"go.opentelemetry.io/otel"
 )
+
+// Definindo o tracer global no pacote
+var tracer = otel.Tracer("openweather-client")
 
 // Interface para buscar a temperatura por CEP
 type GetTemperatureForCep interface {
@@ -61,6 +66,10 @@ type WeatherResponse struct {
 
 // Método para obter os dados do CEP
 func (c *OpenWeatherClient) getCepData(ctx context.Context, cep string) (*ViaCepResponse, error) {
+	// Iniciar um span para a requisição de CEP
+	ctx, span := tracer.Start(ctx, "getCepData")
+	defer span.End()
+
 	resp, err := http.Get(fmt.Sprintf("https://viacep.com.br/ws/%s/json/", cep))
 	if err != nil {
 		return nil, err
@@ -83,9 +92,14 @@ func (c *OpenWeatherClient) getCepData(ctx context.Context, cep string) (*ViaCep
 
 // Método para obter os dados de geolocalização
 func (c *OpenWeatherClient) getGeoData(ctx context.Context, bairro, localidade string) (*GeoResponse, error) {
+	// Iniciar um span para a requisição de geolocalização
+	ctx, span := tracer.Start(ctx, "getGeoData")
+	defer span.End()
+
 	bairro = url.QueryEscape(bairro)
 	localidade = url.QueryEscape(localidade)
 	fmt.Println(localidade, bairro)
+
 	resp, err := http.Get(fmt.Sprintf("http://api.openweathermap.org/geo/1.0/direct?q=%s,%s&appid=%s", bairro, localidade, c.apiKey))
 	if err != nil {
 		return nil, err
@@ -112,6 +126,10 @@ func (c *OpenWeatherClient) getGeoData(ctx context.Context, bairro, localidade s
 
 // Método para obter os dados de clima
 func (c *OpenWeatherClient) getWeatherData(ctx context.Context, lat, lon float64) (*WeatherResponse, error) {
+	// Iniciar um span para a requisição de clima
+	ctx, span := tracer.Start(ctx, "getWeatherData")
+	defer span.End()
+
 	resp, err := http.Get(fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?lat=%f&lon=%f&appid=%s", lat, lon, c.apiKey))
 	if err != nil {
 		return nil, err
@@ -134,16 +152,23 @@ func (c *OpenWeatherClient) getWeatherData(ctx context.Context, lat, lon float64
 
 // Método principal da interface para obter a temperatura por CEP
 func (c *OpenWeatherClient) GetTemperatureByCep(ctx context.Context, cep string) (float64, string, error) {
+	// Iniciar um span para o processo completo de obtenção de temperatura
+	ctx, span := tracer.Start(ctx, "GetTemperatureByCep")
+	defer span.End()
+
+	// Obter dados do CEP
 	cepData, err := c.getCepDataFunc(ctx, cep)
 	if err != nil {
 		return 0, "", err
 	}
 
+	// Obter dados de geolocalização
 	geoData, err := c.getGeoDataFunc(ctx, cepData.Bairro, cepData.Localidade)
 	if err != nil {
 		return 0, "", err
 	}
 
+	// Obter dados de clima
 	weatherData, err := c.getWeatherDataFunc(ctx, geoData.Lat, geoData.Lon)
 	if err != nil {
 		return 0, "", err
